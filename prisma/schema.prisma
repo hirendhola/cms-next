@@ -19,6 +19,8 @@ enum Role {
   LIBRARIAN
   ACCOUNTANT
   STAFF
+  TEMP
+  PLATFORM_OWNER
 }
 
 enum LeaveStatus {
@@ -77,6 +79,19 @@ enum StudentStatus {
   ON_LEAVE
   SUSPENDED
 }
+
+enum OnboardingStatus {
+  PENDING   // Initial state
+  APPROVED  // Owner approved, waiting for magic link generation/sending
+  REJECTED  // Owner rejected
+  INITIATED // Magic link sent, waiting for user to click and setup
+  SETUP_COMPLETED // User submitted institute details via magic link form
+  AWAITING_CLERK // Waiting for Clerk webhook after signup/login
+  COMPLETED // Clerk user linked, onboarding finished
+  EXPIRED   // Token expired before completion
+  ERROR     // An error occurred during the process
+}
+
 
 model Institution {
   id                String   @id @default(uuid())
@@ -972,4 +987,27 @@ model LibraryBorrowing {
   @@index([userId])
   @@index([status])
   @@index([dueDate])
+}
+
+model OnboardingRequest {
+  id                    String            @id @default(uuid())
+  adminName             String
+  adminEmail            String            @unique // Ensure email is unique per request
+  adminPhone            String?
+  proposedInstituteName String
+  // proposedInstituteCode String?        @unique // Make unique if you use it
+  reason                String?           @db.Text
+  status                OnboardingStatus  @default(PENDING)
+  onboardingToken       String?           @unique // The magic link token
+  tokenExpiresAt        DateTime?         // Expiry for the token
+  createdInstitutionId  String?           // Store the ID of the institution once created
+  rejectionReason       String?           @db.Text // If rejected by owner
+  errorMessage          String?           @db.Text // If an error occurred
+
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@index([adminEmail])
+  @@index([status])
+  @@index([onboardingToken])
 }
